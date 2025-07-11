@@ -1,4 +1,4 @@
-package handlers
+package friend
 
 import "net/http"
 
