@@ -1,10 +1,8 @@
 package models
 
-import "strconv"
-
 func ConvertUserDTOToModel(u UserDTO) User {
 	return User{
-		ID:        strconv.Itoa(u.ID),
+		ID:        u.ID,
 		Name:      u.Name,
 		Surname:   u.Surname,
 		Birthday:  u.Birthday,
@@ -16,9 +14,8 @@ func ConvertUserDTOToModel(u UserDTO) User {
 }
 
 func MustConvertUserModelToDTO(u User) UserDTO {
-	id, _ := strconv.Atoi(u.ID)
 	return UserDTO{
-		ID:        id,
+		ID:        u.ID,
 		Name:      u.Name,
 		Surname:   u.Surname,
 		Birthday:  u.Birthday,

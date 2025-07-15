@@ -4,15 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"otus/go-server-project/internal/models"
-	"strconv"
 )
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
 
 type UserRepository interface {
 	Login(string, string) (string, error)
-	RegisterUser(u models.UserDTO) error
-	Get(id int) (models.UserDTO, error)
+	RegisterUser(u models.UserDTO) (string, error)
+	Get(id string) (models.UserDTO, error)
+	ValidateToken(token string) error
 }
 
 type PasswordHasher interface {
@@ -51,16 +51,30 @@ func (s *userService) Login(login, password string) (string, error) {
 func (s *userService) RegisterUser(u models.User) (string, error) {
 	m := models.MustConvertUserModelToDTO(u)
 	m.PasswordHash = s.hasher.Hash(u.Password)
-	if err := s.repo.RegisterUser(m); err != nil {
+	token, err := s.repo.RegisterUser(m)
+	if err != nil {
 		return "", fmt.Errorf("failed to register user: %w", err)
 	}
-	return strconv.Itoa(m.ID), nil
+	return token, nil
 }
 
-func (s *userService) Get(id int) (models.User, error) {
+func (s *userService) Get(id string) (models.User, error) {
 	user, err := s.repo.Get(id)
 	if err != nil {
 		return models.User{}, fmt.Errorf("failed to get user: %w", err)
 	}
 	return models.ConvertUserDTOToModel(user), nil
+}
+
+func (s *userService) ValidateToken(token string) error {
+	if token == "" {
+		return errors.New("token is empty")
+	}
+
+	err := s.repo.ValidateToken(token)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

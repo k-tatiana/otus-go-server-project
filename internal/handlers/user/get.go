@@ -4,20 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/gorilla/mux"
 )
 
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["id"]
-
-	userID, err := strconv.Atoi(id)
+	err := h.service.ValidateToken(r.Header.Get("X-Authenticated-User"))
 	if err != nil {
-		fmt.Println("Unable to get UserID from query params %w", err)
-		http.Error(w, "User not found", http.StatusNotFound)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	userID := mux.Vars(r)["id"]
 	user, err := h.service.Get(userID)
 	if err != nil {
 		fmt.Printf("Unable to get UserID from database %w", err)

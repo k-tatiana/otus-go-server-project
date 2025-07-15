@@ -5,7 +5,7 @@ import (
 )
 
 type UserDTO struct {
-	ID           int
+	ID           *string
 	Name         string
 	Surname      string
 	Birthday     time.Time

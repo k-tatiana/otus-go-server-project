@@ -64,10 +64,12 @@ func (s *HttpServer) Start() error {
 	userService := service.NewUserService(repo, hasher)
 	userHandler := user.NewUserHandler(userService)
 
+	a := r.NewRoute().Subrouter()
+
 	// User
 	r.HandleFunc("/login", userHandler.Login).Methods("POST")
 	r.HandleFunc("/user/register", userHandler.RegisterUser).Methods("POST")
-	r.HandleFunc("/user/get/{id}", userHandler.GetUser).Methods("GET")
+	a.HandleFunc("/user/get/{id}", userHandler.GetUser).Methods("GET")
 	// r.HandleFunc("/user/search", user.SearchUser).Methods("GET")
 
 	// // Friend
@@ -85,8 +87,12 @@ func (s *HttpServer) Start() error {
 	// r.HandleFunc("/dialog/{user_id}/send", dialog.SendDialog).Methods("POST")
 	// r.HandleFunc("/dialog/{user_id}/list", dialog.ListDialog).Methods("GET")
 
-	handler := middlewares.Logger(r)
-	s.srv.Handler = handler
+	// middlewares
+	a.Use(middlewares.AuthMiddleware)
+	r.Use(middlewares.Logger)
+	r.Use(middlewares.Responses)
+
+	s.srv.Handler = r
 
 	return s.srv.ListenAndServe()
 }

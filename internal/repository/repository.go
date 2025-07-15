@@ -6,6 +6,7 @@ import (
 	"otus/go-server-project/internal/models"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx"
 )
 
@@ -58,18 +59,20 @@ func (r *Repo) loginWithReturnToken(tx *pgx.Tx, login, passwordHash string) (str
 		pwd_hash string
 	)
 	err := tx.QueryRow(
-		"SELECT token, password_hash FROM users WHERE login=$1",
+		"SELECT password_hash FROM users WHERE token=$1",
 		login,
-	).Scan(&token, &pwd_hash)
+	).Scan(&pwd_hash)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return "", errors.New("no such user")
+			return "", models.ErrNoSuchUser
 		}
 		return "", err
 	}
 	if pwd_hash != passwordHash {
-		return "", errors.New("invalid credentials")
+		return "", models.ErrInvalidCredentials
 	}
+	token = uuid.New().String() // Generate a new token
+
 	return token, nil
 }
 
@@ -82,8 +85,8 @@ func (r *Repo) saveToken(tx *pgx.Tx, token string) error {
 	return err
 }
 
-func (r *Repo) RegisterUser(u models.UserDTO) error {
-	_, err := r.db.Exec(
+func (r *Repo) RegisterUser(u models.UserDTO) (string, error) {
+	row := r.db.QueryRow(
 		`INSERT INTO users (
 			name,
 			surname,
@@ -93,23 +96,27 @@ func (r *Repo) RegisterUser(u models.UserDTO) error {
 			city,
 			login,
 			password_hash
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		 RETURNING token`,
 		u.Name, u.Surname, u.Birthday, u.Gender, u.Interests, u.City, u.Login, u.PasswordHash,
 	)
-	if err != nil {
+	var token string
+	if err := row.Scan(&token); err != nil {
+		// Check for unique constraint violation (duplicate user)
+		// Assuming 'login' is unique in the users table
 		if pgErr, ok := err.(pgx.PgError); ok && pgErr.Code == "23505" {
-			return errors.New("user already exists")
+			return "", errors.New("user already exists")
 		}
-		return fmt.Errorf("inserting users %w", err)
+		return "", fmt.Errorf("inserting user %w", err)
 	}
 
-	return nil
+	return token, nil
 }
 
-func (r *Repo) Get(id int) (models.UserDTO, error) {
+func (r *Repo) Get(id string) (models.UserDTO, error) {
 	var u models.UserDTO
 	err := r.db.QueryRow(
-		"SELECT name, surname, birthday, gender, interests, city, login FROM users WHERE id=$1",
+		"SELECT name, surname, birthday, gender, interests, city, login FROM users WHERE token=$1",
 		id,
 	).Scan(&u.Name, &u.Surname, &u.Birthday, &u.Gender, &u.Interests, &u.City, &u.Login)
 	if err != nil {
@@ -119,4 +126,19 @@ func (r *Repo) Get(id int) (models.UserDTO, error) {
 		return models.UserDTO{}, fmt.Errorf("failed to get user: %w", err)
 	}
 	return u, nil
+}
+
+func (r *Repo) ValidateToken(token string) error {
+	var count int
+	err := r.db.QueryRow(
+		"SELECT COUNT(*) FROM sessions WHERE token=$1 AND expiration_time > NOW()",
+		token,
+	).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to validate token: %w", err)
+	}
+	if count == 0 {
+		return models.ErrUnauthorized
+	}
+	return nil
 }
