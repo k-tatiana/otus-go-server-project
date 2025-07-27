@@ -10,9 +10,10 @@ var ErrInvalidCredentials = errors.New("invalid credentials")
 
 type UserRepository interface {
 	Login(string, string) (string, error)
-	RegisterUser(u models.UserDTO) (string, error)
 	Get(id string) (models.UserDTO, error)
 	ValidateToken(token string) error
+	SearchUser(name, surname string) ([]models.UserDTO, error)
+	RegisterUser(u models.UserDTO) (string, error)
 }
 
 type PasswordHasher interface {
@@ -77,4 +78,18 @@ func (s *userService) ValidateToken(token string) error {
 	}
 
 	return nil
+}
+
+func (s *userService) SearchUser(name, surname string) ([]models.User, error) {
+	users := make([]models.User, 0)
+	usersDTO, err := s.repo.SearchUser(name, surname)
+	if err != nil {
+		return nil, err
+	}
+	for _, user := range usersDTO {
+		u := models.ConvertUserDTOToModel(user)
+		users = append(users, u)
+	}
+
+	return users, nil
 }

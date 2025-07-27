@@ -1,9 +1,28 @@
 package user
 
-import "net/http"
+import (
+	"encoding/json"
+	"net/http"
 
-func SearchUser(w http.ResponseWriter, r *http.Request) {
-	// TODO: implement search logic
+	"go.uber.org/zap"
+)
+
+func (h *UserHandler) SearchUser(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("firstName")
+	surname := r.URL.Query().Get("secondName")
+	users, err := h.service.SearchUser(name, surname)
+	if len(users) == 0 {
+		h.logger.Warn("No users found", zap.String("name", name), zap.String("surname", surname))
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	data, err := json.Marshal(users)
+	if err != nil {
+		h.logger.Error("Convert user models to json", zap.Error(err))
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`[]`))
+	w.Write(data)
 }

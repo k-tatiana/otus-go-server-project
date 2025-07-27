@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx"
+	"go.uber.org/zap"
 )
 
 type HttpServer struct {
@@ -62,7 +63,8 @@ func (s *HttpServer) Start() error {
 	hasher := service.NewSimpleHasher(env.Secret)
 
 	userService := service.NewUserService(repo, hasher)
-	userHandler := user.NewUserHandler(userService)
+	logger := zap.NewNop()
+	userHandler := user.NewUserHandler(userService, logger)
 
 	a := r.NewRoute().Subrouter()
 
@@ -70,7 +72,7 @@ func (s *HttpServer) Start() error {
 	r.HandleFunc("/login", userHandler.Login).Methods("POST")
 	r.HandleFunc("/user/register", userHandler.RegisterUser).Methods("POST")
 	a.HandleFunc("/user/get/{id}", userHandler.GetUser).Methods("GET")
-	// r.HandleFunc("/user/search", user.SearchUser).Methods("GET")
+	r.HandleFunc("/user/search", userHandler.SearchUser).Methods("GET")
 
 	// // Friend
 	// r.HandleFunc("/friend/set/{user_id}", friend.SetFriend).Methods("PUT")

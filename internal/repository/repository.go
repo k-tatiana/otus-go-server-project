@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"otus/go-server-project/internal/models"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -141,4 +142,38 @@ func (r *Repo) ValidateToken(token string) error {
 		return models.ErrUnauthorized
 	}
 	return nil
+}
+
+func (r *Repo) SearchUser(name, surname string) ([]models.UserDTO, error) {
+	rows, err := r.db.Query(
+		`SELECT name, surname, birthday, gender, interests, city, login FROM users WHERE lower(name) LIKE $1 || '%' AND lower(surname) LIKE $2 || '%'`,
+		strings.ToLower(name),
+		strings.ToLower(surname),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]models.UserDTO, 0)
+	for rows.Next() {
+		var user models.UserDTO
+		if err := rows.Scan(
+			&user.Name,
+			&user.Surname,
+			&user.Birthday,
+			&user.Gender,
+			&user.Interests,
+			&user.City,
+			&user.Login,
+		); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	if err = rows.Err(); err != nil {
+		return users, err
+	}
+
+	return users, nil
 }
