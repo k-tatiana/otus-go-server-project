@@ -8,12 +8,23 @@ import (
 )
 
 func (h *UserHandler) SearchUser(w http.ResponseWriter, r *http.Request) {
+	err := h.service.ValidateToken(r.Header.Get("X-Authenticated-User"))
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	name := r.URL.Query().Get("firstName")
 	surname := r.URL.Query().Get("secondName")
+
 	users, err := h.service.SearchUser(name, surname)
+	if err != nil {
+		h.logger.Warn("SearchUser error", zap.String("name", name), zap.String("surname", surname))
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
 	if len(users) == 0 {
 		h.logger.Warn("No users found", zap.String("name", name), zap.String("surname", surname))
-		http.Error(w, err.Error(), http.StatusNotFound)
+		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
 

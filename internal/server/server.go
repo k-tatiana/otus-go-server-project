@@ -72,7 +72,7 @@ func (s *HttpServer) Start() error {
 	r.HandleFunc("/login", userHandler.Login).Methods("POST")
 	r.HandleFunc("/user/register", userHandler.RegisterUser).Methods("POST")
 	a.HandleFunc("/user/get/{id}", userHandler.GetUser).Methods("GET")
-	r.HandleFunc("/user/search", userHandler.SearchUser).Methods("GET")
+	a.HandleFunc("/user/search", userHandler.SearchUser).Methods("GET")
 
 	// // Friend
 	// r.HandleFunc("/friend/set/{user_id}", friend.SetFriend).Methods("PUT")

@@ -146,7 +146,9 @@ func (r *Repo) ValidateToken(token string) error {
 
 func (r *Repo) SearchUser(name, surname string) ([]models.UserDTO, error) {
 	rows, err := r.db.Query(
-		`SELECT name, surname, birthday, gender, interests, city, login FROM users WHERE lower(name) LIKE $1 || '%' AND lower(surname) LIKE $2 || '%'`,
+		`SELECT name, surname, birthday, gender, interests, city, login FROM users 
+		WHERE lower(name) LIKE $1 || '%' AND lower(surname) LIKE $2 || '%'
+		ORDER BY token`, // ofer by anket id
 		strings.ToLower(name),
 		strings.ToLower(surname),
 	)
