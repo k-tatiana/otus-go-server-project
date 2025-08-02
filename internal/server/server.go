@@ -68,6 +68,8 @@ func (s *HttpServer) Start() error {
 
 	a := r.NewRoute().Subrouter()
 
+	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+
 	// User
 	r.HandleFunc("/login", userHandler.Login).Methods("POST")
 	r.HandleFunc("/user/register", userHandler.RegisterUser).Methods("POST")

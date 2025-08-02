@@ -2,6 +2,9 @@ package main
 
 import (
 	"log"
+
+	_ "net/http/pprof"
+
 	"otus/go-server-project/internal/server"
 )
 
