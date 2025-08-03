@@ -5,6 +5,8 @@ import (
 
 	_ "net/http/pprof"
 
+	_ "go.uber.org/automaxprocs"
+
 	"otus/go-server-project/internal/server"
 )
 
