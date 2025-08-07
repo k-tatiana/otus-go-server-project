@@ -1,17 +1,18 @@
 package user
 
 import (
+	"context"
 	"otus/go-server-project/internal/models"
 
 	"go.uber.org/zap"
 )
 
 type UserService interface {
-	ValidateToken(token string) error
-	Login(login, password string) (string, error)
-	RegisterUser(u models.User) (string, error)
-	Get(id string) (models.User, error)
-	SearchUser(name, surname string) ([]models.User, error)
+	ValidateToken(context.Context, string) error
+	Login(context.Context, string, string) (string, error)
+	RegisterUser(context.Context, models.User) (string, error)
+	Get(context.Context, string) (models.User, error)
+	SearchUser(context.Context, string, string) ([]models.User, error)
 }
 
 type UserHandler struct {

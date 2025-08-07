@@ -1,19 +1,21 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
+
 	"otus/go-server-project/internal/models"
 )
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
 
 type UserRepository interface {
-	Login(string, string) (string, error)
-	Get(id string) (models.UserDTO, error)
-	ValidateToken(token string) error
-	SearchUser(name, surname string) ([]models.UserDTO, error)
-	RegisterUser(u models.UserDTO) (string, error)
+	Login(context.Context, string, string) (string, error)
+	Get(context.Context, string) (models.UserDTO, error)
+	ValidateToken(context.Context, string) error
+	SearchUser(context.Context, string, string) ([]models.UserDTO, error)
+	RegisterUser(context.Context, models.UserDTO) (string, error)
 }
 
 type PasswordHasher interface {
@@ -34,14 +36,14 @@ func NewUserService(r UserRepository, h PasswordHasher) *userService {
 
 // Login authenticates a user with the given username and password.
 // It returns a token if the credentials are valid, or an error if they are not.
-func (s *userService) Login(login, password string) (string, error) {
+func (s *userService) Login(ctx context.Context, login, password string) (string, error) {
 	fmt.Printf("Login attempt with username: %s\n", login)
 	if login == "" || password == "" {
 		return "", ErrInvalidCredentials
 	}
 	pwd_hash := s.hasher.Hash(password)
 
-	token, err := s.repo.Login(login, pwd_hash)
+	token, err := s.repo.Login(ctx, login, pwd_hash)
 	if err != nil {
 		return "", err
 	}
@@ -49,30 +51,30 @@ func (s *userService) Login(login, password string) (string, error) {
 	return token, nil
 }
 
-func (s *userService) RegisterUser(u models.User) (string, error) {
+func (s *userService) RegisterUser(ctx context.Context, u models.User) (string, error) {
 	m := models.MustConvertUserModelToDTO(u)
 	m.PasswordHash = s.hasher.Hash(u.Password)
-	token, err := s.repo.RegisterUser(m)
+	token, err := s.repo.RegisterUser(ctx, m)
 	if err != nil {
 		return "", fmt.Errorf("failed to register user: %w", err)
 	}
 	return token, nil
 }
 
-func (s *userService) Get(id string) (models.User, error) {
-	user, err := s.repo.Get(id)
+func (s *userService) Get(ctx context.Context, id string) (models.User, error) {
+	user, err := s.repo.Get(ctx, id)
 	if err != nil {
 		return models.User{}, fmt.Errorf("failed to get user: %w", err)
 	}
 	return models.ConvertUserDTOToModel(user), nil
 }
 
-func (s *userService) ValidateToken(token string) error {
+func (s *userService) ValidateToken(ctx context.Context, token string) error {
 	if token == "" {
 		return errors.New("token is empty")
 	}
 
-	err := s.repo.ValidateToken(token)
+	err := s.repo.ValidateToken(ctx, token)
 	if err != nil {
 		return err
 	}
@@ -80,9 +82,9 @@ func (s *userService) ValidateToken(token string) error {
 	return nil
 }
 
-func (s *userService) SearchUser(name, surname string) ([]models.User, error) {
+func (s *userService) SearchUser(ctx context.Context, name, surname string) ([]models.User, error) {
 	users := make([]models.User, 0)
-	usersDTO, err := s.repo.SearchUser(name, surname)
+	usersDTO, err := s.repo.SearchUser(ctx, name, surname)
 	if err != nil {
 		return nil, err
 	}

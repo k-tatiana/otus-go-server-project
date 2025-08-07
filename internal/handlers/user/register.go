@@ -8,6 +8,7 @@ import (
 )
 
 func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var (
 		u  models.User
 		id string
@@ -17,7 +18,7 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if id, err = h.service.RegisterUser(u); err != nil {
+	if id, err = h.service.RegisterUser(ctx, u); err != nil {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}

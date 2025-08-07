@@ -2,20 +2,28 @@ package user
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"otus/go-server-project/internal/models"
 
 	"github.com/gorilla/mux"
 )
 
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	err := h.service.ValidateToken(r.Header.Get("X-Authenticated-User"))
-	if err != nil {
+	ctx := r.Context()
+	err := h.service.ValidateToken(ctx, r.Header.Get("X-Authenticated-User"))
+	if err != nil && errors.Is(err, models.ErrUnauthorized) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	if err != nil {
+		fmt.Printf("Error validating token: %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	userID := mux.Vars(r)["id"]
-	user, err := h.service.Get(userID)
+	user, err := h.service.Get(ctx, userID)
 	if err != nil {
 		fmt.Printf("Unable to get UserID from database %w", err)
 		http.Error(w, "User not found", http.StatusNotFound)

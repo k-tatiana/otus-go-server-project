@@ -10,7 +10,7 @@ import (
 )
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
-	// TODO: implement login logic
+	ctx := r.Context()
 	var l models.Login
 
 	err := json.NewDecoder(r.Body).Decode(&l)
@@ -19,7 +19,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.service.Login(l.Login, l.Password)
+	token, err := h.service.Login(ctx, l.Login, l.Password)
 	if errors.Is(err, models.ErrNoSuchUser) {
 		http.Error(w, "No such user", http.StatusNotFound)
 		w.WriteHeader(http.StatusNotFound)
