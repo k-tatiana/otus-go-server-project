@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"otus/go-server-project/internal"
@@ -11,7 +12,7 @@ import (
 	"otus/go-server-project/internal/service"
 
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
 
@@ -40,30 +41,53 @@ func (s *HttpServer) Start() error {
 		log.Fatalf("Could not parse environment variables: %v", err)
 	}
 
+	ctx := context.Background()
+
 	r := mux.NewRouter()
 
-	pool, err := pgx.NewConnPool(
-		pgx.ConnPoolConfig{
-			ConnConfig: pgx.ConnConfig{
-				Host:     env.DB.Host,
-				Port:     uint16(env.DB.Port),
-				User:     env.DB.User,
-				Password: env.DB.Password,
-				Database: env.DB.Database,
-			},
-			MaxConnections: 2,
-		},
-	)
+	logger := zap.NewNop()
+
+	masterDbCfg := repository.Config(
+		fmt.Sprintf(
+			"postgres://%s:%s@%s:%d/%s",
+			env.DBMaster.User,
+			env.DBMaster.Password,
+			env.DBMaster.Host,
+			env.DBMaster.Port,
+			env.DBMaster.Database,
+		))
+	slaveDbCfgs := []*pgxpool.Config{
+		repository.Config(
+			fmt.Sprintf(
+				"postgres://%s:%s@%s:%d/%s",
+				env.DBReplica1.User,
+				env.DBReplica1.Password,
+				env.DBReplica1.Host,
+				env.DBReplica1.Port,
+				env.DBReplica1.Database,
+			)),
+		repository.Config(
+			fmt.Sprintf(
+				"postgres://%s:%s@%s:%d/%s",
+				env.DBReplica2.User,
+				env.DBReplica2.Password,
+				env.DBReplica2.Host,
+				env.DBReplica2.Port,
+				env.DBReplica2.Database,
+			)),
+	}
 
 	if err != nil {
 		log.Fatalf("Could not connect to database: %v", err)
 	}
 
-	repo := repository.NewRepo(pool)
+	repo, err := repository.NewRepo(ctx, masterDbCfg, slaveDbCfgs)
+	if err != nil {
+		log.Fatalf("Could not create repository: %v", err)
+	}
 	hasher := service.NewSimpleHasher(env.Secret)
 
 	userService := service.NewUserService(repo, hasher)
-	logger := zap.NewNop()
 	userHandler := user.NewUserHandler(userService, logger)
 
 	a := r.NewRoute().Subrouter()

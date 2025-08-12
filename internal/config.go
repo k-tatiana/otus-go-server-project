@@ -3,17 +3,19 @@ package internal
 import "github.com/kelseyhightower/envconfig"
 
 type DBConfig struct {
-	Host     string `envconfig:"DB_HOST" default:"localhost"`
-	Port     int    `envconfig:"DB_PORT" default:"5432"`
-	User     string `envconfig:"DB_USER" default:"postgres"`
-	Password string `envconfig:"DB_PASSWORD" default:"password"`
-	Database string `envconfig:"DB_NAME" default:"postgres"`
-	SSLMode  string `envconfig:"DB_SSLMODE" default:"disable"`
+	Host     string `envconfig:"HOST" default:"localhost"`
+	Port     int    `envconfig:"PORT" default:"5432"`
+	User     string `envconfig:"USER" default:"postgres"`
+	Password string `envconfig:"PASSWORD" default:"password"`
+	Database string `envconfig:"NAME" default:"postgres"`
+	SSLMode  string `envconfig:"SSLMODE" default:"disable"`
 }
 
 type Config struct {
-	DB     DBConfig
-	Secret string `envconfig:"SECRET"`
+	DBMaster   DBConfig `envconfig:"DB_MASTER"`
+	DBReplica1 DBConfig `envconfig:"DB_REPLICA1"`
+	DBReplica2 DBConfig `envconfig:"DB_REPLICA2"`
+	Secret     string   `envconfig:"SECRET"`
 }
 
 func EnvParse() (*Config, error) {

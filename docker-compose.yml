@@ -7,17 +7,23 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      db:
+      db-master:
+        condition: service_healthy
+      db-slave-1:
+        condition: service_healthy
+      db-slave-2:
         condition: service_healthy
       db-migrate:
         condition: service_completed_successfully
     env_file:
       - .env
+    networks:
+      - pgnet
 
-  db:
+  db-master:
     image: postgres:16
-    container_name: go-server-db
-    restart: always
+    container_name: pgmaster
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -29,6 +35,50 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    volumes:
+      - "$PWD/volumes/pgmaster/:/var/lib/postgresql/data"
+    networks:
+      - pgnet
+
+  db-slave-1:
+    image: postgres:16
+    container_name: pgslave
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - "$PWD/volumes/pgslave/:/var/lib/postgresql/data"
+    networks:
+      - pgnet
+
+  db-slave-2:
+    image: postgres:16
+    container_name: pgasyncslave
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "25432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - "$PWD/volumes/pgasyncslave/:/var/lib/postgresql/data"
+    networks:
+      - pgnet
 
   db-migrate:
     build:
@@ -36,9 +86,21 @@ services:
       dockerfile: Dockerfile
     container_name: goose-migrate
     depends_on:
-      - db
+      - db-master
+      - db-slave-1
+      - db-slave-2
     volumes:
       - ./migrations:/migrations
       - ./scripts:/scripts
     working_dir: /scripts
     entrypoint: ["/bin/sh", "wait-and-migrate.sh"]
+    networks:
+      - pgnet
+
+networks:
+  pgnet:
+    driver: bridge
+    ipam:
+          driver: default
+          config:
+            - subnet: "172.19.0.0/16"
