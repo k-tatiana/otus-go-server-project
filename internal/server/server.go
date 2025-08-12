@@ -81,7 +81,7 @@ func (s *HttpServer) Start() error {
 		log.Fatalf("Could not connect to database: %v", err)
 	}
 
-	repo, err := repository.NewRepo(ctx, masterDbCfg, slaveDbCfgs)
+	repo, err := repository.NewRepo(ctx, masterDbCfg, slaveDbCfgs, true)
 	if err != nil {
 		log.Fatalf("Could not create repository: %v", err)
 	}
