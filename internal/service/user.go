@@ -13,7 +13,6 @@ var ErrInvalidCredentials = errors.New("invalid credentials")
 type UserRepository interface {
 	Login(context.Context, string, string) (string, error)
 	Get(context.Context, string) (models.UserDTO, error)
-	ValidateToken(context.Context, string) error
 	SearchUser(context.Context, string, string) ([]models.UserDTO, error)
 	RegisterUser(context.Context, models.UserDTO) (string, error)
 }
@@ -67,19 +66,6 @@ func (s *userService) Get(ctx context.Context, id string) (models.User, error) {
 		return models.User{}, fmt.Errorf("failed to get user: %w", err)
 	}
 	return models.ConvertUserDTOToModel(user), nil
-}
-
-func (s *userService) ValidateToken(ctx context.Context, token string) error {
-	if token == "" {
-		return errors.New("token is empty")
-	}
-
-	err := s.repo.ValidateToken(ctx, token)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *userService) SearchUser(ctx context.Context, name, surname string) ([]models.User, error) {

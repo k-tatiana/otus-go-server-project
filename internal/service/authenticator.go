@@ -1,13 +1,24 @@
 package service
 
 import (
+	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 )
 
+type Repo interface {
+	ValidateToken(ctx context.Context, token string) error
+}
+
 type Authenticator struct {
+	repo Repo
+}
+
+func NewAuthenticator(repo Repo) *Authenticator {
+	return &Authenticator{repo: repo}
 }
 
 // GenerateBearerToken creates a random 32-byte bearer token.
@@ -47,4 +58,17 @@ func (a *Authenticator) ValidateToken(token string) (string, error) {
 	}
 
 	return parts[0], nil
+}
+
+func (a *Authenticator) Auth(ctx context.Context, token string) error {
+	if token == "" {
+		return errors.New("token is empty")
+	}
+
+	err := a.repo.ValidateToken(ctx, token)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

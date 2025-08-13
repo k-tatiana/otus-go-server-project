@@ -9,7 +9,7 @@ import (
 
 func (h *UserHandler) SearchUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	err := h.service.ValidateToken(ctx, r.Header.Get("X-Authenticated-User"))
+	err := h.authenticator.Auth(ctx, r.Header.Get("X-Authenticated-User"))
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

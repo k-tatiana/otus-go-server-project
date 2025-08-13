@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"otus/go-server-project/internal"
+	"otus/go-server-project/internal/handlers/post"
 	"otus/go-server-project/internal/handlers/user"
 	"otus/go-server-project/internal/middlewares"
 	"otus/go-server-project/internal/repository"
@@ -86,11 +87,15 @@ func (s *HttpServer) Start() error {
 		log.Fatalf("Could not create repository: %v", err)
 	}
 	hasher := service.NewSimpleHasher(env.Secret)
+	authenticator := service.NewAuthenticator(repo)
 
 	userService := service.NewUserService(repo, hasher)
-	userHandler := user.NewUserHandler(userService, logger)
+	userHandler := user.NewUserHandler(userService, logger, authenticator)
 
-	a := r.NewRoute().Subrouter()
+	postsService := service.NewPostsService(repo)
+	postsHandler := post.NewPostsHandler(postsService, logger, authenticator)
+
+	a := r.NewRoute().Subrouter() // for requests only for logged-in
 
 	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 
@@ -109,7 +114,7 @@ func (s *HttpServer) Start() error {
 	// r.HandleFunc("/post/update", post.UpdatePost).Methods("PUT")
 	// r.HandleFunc("/post/delete/{id}", post.DeletePost).Methods("PUT")
 	// r.HandleFunc("/post/get/{id}", post.GetPost).Methods("GET")
-	// r.HandleFunc("/post/feed", post.FeedPost).Methods("GET")
+	a.HandleFunc("/post/feed", postsHandler.FeedPost).Methods("GET")
 
 	// // Dialog
 	// r.HandleFunc("/dialog/{user_id}/send", dialog.SendDialog).Methods("POST")

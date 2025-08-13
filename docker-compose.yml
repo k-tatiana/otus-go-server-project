@@ -37,6 +37,7 @@ services:
       retries: 5
     volumes:
       - "$PWD/volumes/pgmaster/:/var/lib/postgresql/data"
+    # command: sleep 60
     networks:
       - pgnet
 

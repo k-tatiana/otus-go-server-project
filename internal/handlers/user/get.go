@@ -12,7 +12,7 @@ import (
 
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	err := h.service.ValidateToken(ctx, r.Header.Get("X-Authenticated-User"))
+	err := h.authenticator.Auth(ctx, r.Header.Get("X-Authenticated-User"))
 	if err != nil && errors.Is(err, models.ErrUnauthorized) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
