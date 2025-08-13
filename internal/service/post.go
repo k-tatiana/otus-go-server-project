@@ -17,8 +17,8 @@ func NewPostsService(r PostsRepository) *postsService {
 	return &postsService{repo: r}
 }
 
-func (s *postsService) Feed(ctx context.Context, offset, limit int) ([]models.Post, error) {
-	models, err := s.repo.GetFeed(ctx, offset, limit)
+func (s *postsService) Feed(ctx context.Context, limit, offset int) ([]models.Post, error) {
+	models, err := s.repo.GetFeed(ctx, limit, offset)
 	if err != nil {
 		return nil, err
 	}

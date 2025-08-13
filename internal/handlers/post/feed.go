@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
 
@@ -18,13 +17,13 @@ func (p *PostsHandler) FeedPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Extract offset and limit from URL parameters
-	offsetS := mux.Vars(r)["offset"]
+	offsetS := r.URL.Query().Get("offset")
 	offset, err := strconv.Atoi(offsetS)
 	if err != nil {
 		http.Error(w, "Invalid offset", http.StatusBadRequest)
 		return
 	}
-	limitS := mux.Vars(r)["limit"]
+	limitS := r.URL.Query().Get("limit")
 	limit, err := strconv.Atoi(limitS)
 	if err != nil {
 		http.Error(w, "Invalid limit", http.StatusBadRequest)
@@ -36,7 +35,7 @@ func (p *PostsHandler) FeedPost(w http.ResponseWriter, r *http.Request) {
 	}
 	p.logger.Info("Fetching feed", zap.Int("offset", offset), zap.Int("limit", limit))
 
-	posts, err := p.service.Feed(ctx, offset, limit)
+	posts, err := p.service.Feed(ctx, limit, offset)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
