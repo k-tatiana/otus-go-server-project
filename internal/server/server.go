@@ -103,7 +103,7 @@ func (s *HttpServer) Start() error {
 	cache := cache.NewLRUCache(cacheCapacity)
 	cache.Prepare()
 
-	storage := storage.NewStorage(repo, cache, useCache)
+	storage := storage.NewStorage(repo, cache, env.Cache.UseCache)
 
 	postsService := service.NewPostsService(storage)
 	postsHandler := post.NewPostsHandler(postsService, logger, authenticator)

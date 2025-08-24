@@ -16,6 +16,11 @@ type Config struct {
 	DBReplica1 DBConfig `envconfig:"DB_REPLICA1"`
 	DBReplica2 DBConfig `envconfig:"DB_REPLICA2"`
 	Secret     string   `envconfig:"SECRET"`
+	Cache      Cache    `envconfig:"CACHE"`
+}
+
+type Cache struct {
+	UseCache bool `envconfig:"ENABLE" default:"true"`
 }
 
 func EnvParse() (*Config, error) {
