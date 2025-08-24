@@ -6,7 +6,7 @@ import (
 )
 
 type PostsRepository interface {
-	GetFeed(ctx context.Context, offset, limit int) ([]models.Post, error)
+	GetFeed(ctx context.Context, limit, offset int) ([]models.Post, error)
 }
 
 type postsService struct {

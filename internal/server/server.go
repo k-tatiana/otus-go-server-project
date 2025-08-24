@@ -5,16 +5,24 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
 	"otus/go-server-project/internal"
 	"otus/go-server-project/internal/handlers/post"
 	"otus/go-server-project/internal/handlers/user"
 	"otus/go-server-project/internal/middlewares"
-	"otus/go-server-project/internal/repository"
 	"otus/go-server-project/internal/service"
+	"otus/go-server-project/internal/storage"
+	"otus/go-server-project/internal/storage/cache"
+	"otus/go-server-project/internal/storage/repository"
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
+)
+
+const (
+	cacheCapacity = 10000
+	useCache      = false
 )
 
 type HttpServer struct {
@@ -92,7 +100,12 @@ func (s *HttpServer) Start() error {
 	userService := service.NewUserService(repo, hasher)
 	userHandler := user.NewUserHandler(userService, logger, authenticator)
 
-	postsService := service.NewPostsService(repo)
+	cache := cache.NewLRUCache(cacheCapacity)
+	cache.Prepare()
+
+	storage := storage.NewStorage(repo, cache, useCache)
+
+	postsService := service.NewPostsService(storage)
 	postsHandler := post.NewPostsHandler(postsService, logger, authenticator)
 
 	a := r.NewRoute().Subrouter() // for requests only for logged-in

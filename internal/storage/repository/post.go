@@ -37,3 +37,7 @@ func (r *Repo) GetFeed(ctx context.Context, limit, offset int) ([]models.Post, e
 	}
 	return posts, nil
 }
+
+func (r *Repo) SetFeed(ctx context.Context, limit, offset int, models []models.Post) {
+	// This method is intentionally left blank as caching logic is handled elsewhere.
+}
