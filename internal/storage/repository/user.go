@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"otus/go-server-project/internal/models"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v5"
+
+	"otus/go-server-project/internal/models"
 )
 
 // Login checks user credentials and returns a token if valid.

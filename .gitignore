@@ -1,6 +1,7 @@
 .env
 .vscode
 cmd/__debug*
+.DS_Store
 
 volumes
-replication.md
+instructions/replication.md
