@@ -12,16 +12,16 @@ type DBConfig struct {
 }
 
 type DB struct {
-	UseReplicas bool     `envconfig:"USE_REPLICAS" default:"false"`
-	Master      DBConfig `envconfig:"MASTER"`
-	Replica1    DBConfig `envconfig:"REPLICA1"`
-	Replica2    DBConfig `envconfig:"REPLICA2"`
+	UseReplicas bool `envconfig:"USE_REPLICAS" default:"false"`
 }
 
 type Config struct {
-	DB     DB     `envconfig:"DB"`
-	Secret string `envconfig:"SECRET"`
-	Cache  Cache  `envconfig:"CACHE"`
+	DB         DB       `envconfig:"DB"`
+	DBMaster   DBConfig `envconfig:"DB_MASTER"`
+	DBReplica1 DBConfig `envconfig:"DB_REPLICA1"`
+	DBReplica2 DBConfig `envconfig:"DB_REPLICA2"`
+	Secret     string   `envconfig:"SECRET"`
+	Cache      Cache    `envconfig:"CACHE"`
 }
 
 type Cache struct {
