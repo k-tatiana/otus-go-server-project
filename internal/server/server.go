@@ -5,15 +5,24 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
 	"otus/go-server-project/internal"
+	"otus/go-server-project/internal/handlers/post"
 	"otus/go-server-project/internal/handlers/user"
 	"otus/go-server-project/internal/middlewares"
-	"otus/go-server-project/internal/repository"
 	"otus/go-server-project/internal/service"
+	"otus/go-server-project/internal/storage"
+	"otus/go-server-project/internal/storage/cache"
+	"otus/go-server-project/internal/storage/repository"
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
+)
+
+const (
+	cacheCapacity = 10000
+	useCache      = false
 )
 
 type HttpServer struct {
@@ -81,16 +90,25 @@ func (s *HttpServer) Start() error {
 		log.Fatalf("Could not connect to database: %v", err)
 	}
 
-	repo, err := repository.NewRepo(ctx, masterDbCfg, slaveDbCfgs, true)
+	repo, err := repository.NewRepo(ctx, masterDbCfg, slaveDbCfgs, env.DB.UseReplicas)
 	if err != nil {
 		log.Fatalf("Could not create repository: %v", err)
 	}
 	hasher := service.NewSimpleHasher(env.Secret)
+	authenticator := service.NewAuthenticator(repo)
 
 	userService := service.NewUserService(repo, hasher)
-	userHandler := user.NewUserHandler(userService, logger)
+	userHandler := user.NewUserHandler(userService, logger, authenticator)
 
-	a := r.NewRoute().Subrouter()
+	cache := cache.NewLRUCache(cacheCapacity)
+	cache.Prepare()
+
+	storage := storage.NewStorage(repo, cache, env.Cache.UseCache)
+
+	postsService := service.NewPostsService(storage)
+	postsHandler := post.NewPostsHandler(postsService, logger, authenticator)
+
+	a := r.NewRoute().Subrouter() // for requests only for logged-in
 
 	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 
@@ -109,7 +127,7 @@ func (s *HttpServer) Start() error {
 	// r.HandleFunc("/post/update", post.UpdatePost).Methods("PUT")
 	// r.HandleFunc("/post/delete/{id}", post.DeletePost).Methods("PUT")
 	// r.HandleFunc("/post/get/{id}", post.GetPost).Methods("GET")
-	// r.HandleFunc("/post/feed", post.FeedPost).Methods("GET")
+	a.HandleFunc("/post/feed", postsHandler.FeedPost).Methods("GET")
 
 	// // Dialog
 	// r.HandleFunc("/dialog/{user_id}/send", dialog.SendDialog).Methods("POST")

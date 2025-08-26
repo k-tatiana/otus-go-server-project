@@ -11,11 +11,21 @@ type DBConfig struct {
 	SSLMode  string `envconfig:"SSLMODE" default:"disable"`
 }
 
+type DB struct {
+	UseReplicas bool `envconfig:"USE_REPLICAS" default:"false"`
+}
+
 type Config struct {
+	DB         DB       `envconfig:"DB"`
 	DBMaster   DBConfig `envconfig:"DB_MASTER"`
 	DBReplica1 DBConfig `envconfig:"DB_REPLICA1"`
 	DBReplica2 DBConfig `envconfig:"DB_REPLICA2"`
 	Secret     string   `envconfig:"SECRET"`
+	Cache      Cache    `envconfig:"CACHE"`
+}
+
+type Cache struct {
+	UseCache bool `envconfig:"ENABLE" default:"true"`
 }
 
 func EnvParse() (*Config, error) {
