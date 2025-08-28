@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"otus/go-server-project/internal"
+	"otus/go-server-project/internal/handlers/dialog"
 	"otus/go-server-project/internal/handlers/post"
 	"otus/go-server-project/internal/handlers/user"
 	"otus/go-server-project/internal/middlewares"
@@ -103,10 +104,13 @@ func (s *HttpServer) Start() error {
 	cache := cache.NewLRUCache(cacheCapacity)
 	cache.Prepare()
 
-	storage := storage.NewStorage(repo, cache, env.Cache.UseCache)
+	strg := storage.NewStorage(repo, cache, env.Cache.UseCache)
 
-	postsService := service.NewPostsService(storage)
+	postsService := service.NewPostsService(strg)
 	postsHandler := post.NewPostsHandler(postsService, logger, authenticator)
+
+	dialogService := service.NewDialogService(repo)
+	dialogHandler := dialog.NewDialogHandler(dialogService, logger, authenticator)
 
 	a := r.NewRoute().Subrouter() // for requests only for logged-in
 
@@ -130,13 +134,14 @@ func (s *HttpServer) Start() error {
 	a.HandleFunc("/post/feed", postsHandler.FeedPost).Methods("GET")
 
 	// // Dialog
-	// r.HandleFunc("/dialog/{user_id}/send", dialog.SendDialog).Methods("POST")
-	// r.HandleFunc("/dialog/{user_id}/list", dialog.ListDialog).Methods("GET")
+	a.HandleFunc("/dialog/{user_id}/send", dialogHandler.SendDialog).Methods("POST")
+	a.HandleFunc("/dialog/{user_id}/list", dialogHandler.ListDialog).Methods("GET")
 
 	// middlewares
 	a.Use(middlewares.AuthMiddleware)
 	r.Use(middlewares.Logger)
 	r.Use(middlewares.Responses)
+	r.Use(middlewares.RequestIDMiddleware)
 
 	s.srv.Handler = r
 
