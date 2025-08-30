@@ -1,0 +1,85 @@
+# file to start sharding citus example
+
+version: "3"
+
+services:
+
+  app:
+    build: .
+    container_name: go-server-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      master:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env-citus
+    networks:
+      - citusnw
+
+  master:
+    container_name: "citus_master"
+    image: "citusdata/citus:12.1.3"
+    ports: ["${COORDINATOR_EXTERNAL_PORT:-5432}:5432"]
+    labels: ["com.citusdata.role=Master"]
+    environment: &AUTH
+      POSTGRES_USER: "${POSTGRES_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      PGUSER: "${POSTGRES_USER:-postgres}"
+      PGPASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_HOST_AUTH_METHOD: "${POSTGRES_HOST_AUTH_METHOD:-trust}"
+    networks:
+      - citusnw
+
+  worker:
+    image: "citusdata/citus:12.1.3"
+    deploy:
+      replicas: 2
+      mode: replicated
+    labels: ["com.citusdata.role=Worker"]
+    depends_on: [manager]
+    environment: *AUTH
+    command: "/wait-for-manager.sh"
+    volumes:
+      - healthcheck-volume:/healthcheck
+    networks:
+      - citusnw
+
+  manager:
+    container_name: "citus_manager"
+    image: "citusdata/membership-manager:0.3.0"
+    volumes:
+      - "${DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock"
+      - healthcheck-volume:/healthcheck
+    depends_on: [master]
+    environment: *AUTH
+    networks:
+      - citusnw
+
+  migrate:
+    build:
+      context: ./scripts
+      dockerfile: Dockerfile
+    container_name: goose-migrate
+    depends_on:
+      - master
+    volumes:
+      - ./migrations:/migrations
+      - ./scripts:/scripts
+    working_dir: /scripts
+    entrypoint: ["/bin/sh", "wait-and-migrate-citus.sh"]
+    networks:
+      - citusnw
+
+volumes:
+  healthcheck-volume:
+
+networks:
+  citusnw:
+    driver: bridge
+    ipam:
+          driver: default
+          config:
+            - subnet: "172.20.0.0/16"

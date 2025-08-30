@@ -13,7 +13,8 @@ func (r *Repo) SendMessage(ctx context.Context, fromUserID, toUserID, message st
 	}
 	defer conn.Release()
 	_, err = conn.Exec(ctx,
-		"INSERT INTO dialogs (from_user_id, to_user_id, message) VALUES ($1, $2, $3)",
+		`INSERT INTO dialogs (from_user_id, to_user_id, message, user_pair_hash) VALUES ($1::varchar, $2::varchar, $3, 
+    abs(hashtext(LEAST($1::varchar, $2::varchar)::text || GREATEST($1::varchar,$2::varchar)::text)))`,
 		fromUserID, toUserID, message,
 	)
 	if err != nil {
