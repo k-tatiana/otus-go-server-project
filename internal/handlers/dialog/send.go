@@ -1,8 +1,55 @@
 package dialog
 
-import "net/http"
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
 
-func SendDialog(w http.ResponseWriter, r *http.Request) {
-	// TODO: implement send message logic
+	"otus/go-server-project/internal/models"
+
+	"github.com/gorilla/mux"
+	"go.uber.org/zap"
+)
+
+var req struct {
+	Message string `json:"text"`
+}
+
+func (h *DialogHandler) SendDialog(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	currentUser := r.Header.Get("X-Authenticated-User")
+	err := h.authenticator.Auth(ctx, currentUser)
+	if err != nil && errors.Is(err, models.ErrUnauthorized) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if err != nil {
+		h.logger.Error("Error validating token: %v\n", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	userID := mux.Vars(r)["user_id"]
+	h.logger.Info("Send dialog to user %s\n", zap.String("userId", userID))
+
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+	message := req.Message
+	if message == "" {
+		http.Error(w, "Message cannot be empty", http.StatusBadRequest)
+		return
+	}
+	h.logger.Info("Message: %s\n", zap.String("message", message))
+	err = h.service.Send(ctx, currentUser, userID, message)
+	if err != nil {
+		h.logger.Error("Error sending message: %v\n", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(w, "Message sent to user %s\n", userID)
+
 	w.WriteHeader(http.StatusOK)
 }
