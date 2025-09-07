@@ -7,6 +7,7 @@ import (
 
 type PostsRepository interface {
 	GetFeed(ctx context.Context, limit, offset int) ([]models.Post, error)
+	WritePost(ctx context.Context, userId string, post string) (string, error)
 }
 
 type postsService struct {
@@ -23,4 +24,8 @@ func (s *postsService) Feed(ctx context.Context, limit, offset int) ([]models.Po
 		return nil, err
 	}
 	return models, nil
+}
+
+func (s *postsService) WritePost(ctx context.Context, userId, post string) (string, error) {
+	return s.repo.WritePost(ctx, userId, post)
 }

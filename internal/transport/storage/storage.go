@@ -8,6 +8,7 @@ import (
 type storage interface {
 	GetFeed(ctx context.Context, limit, offset int) ([]models.Post, error)
 	SetFeed(ctx context.Context, limit, offset int, models []models.Post)
+	WritePost(context.Context, string, string) (string, error)
 }
 
 type Storage struct {
@@ -34,6 +35,10 @@ func (s *Storage) GetFeed(ctx context.Context, limit, offset int) ([]models.Post
 	s.cache.SetFeed(ctx, limit, offset, models)
 	// Optionally, you might want to cache the result here.
 	return models, nil
+}
+
+func (s *Storage) WritePost(ctx context.Context, userId, post string) (string, error) {
+	return s.repo.WritePost(ctx, userId, post)
 }
 
 func NewStorage(r storage, c storage, useCache bool) *Storage {

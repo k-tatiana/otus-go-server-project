@@ -3,7 +3,7 @@
 ALTER TABLE users ADD COLUMN id BIGSERIAL;
 CREATE TABLE posts (
 	id bigserial primary key,
-	author_user_id bigint, 
+	author_user_id varchar(255), 
 	"text" text
 );
 -- +goose StatementEnd

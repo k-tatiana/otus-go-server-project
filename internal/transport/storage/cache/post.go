@@ -31,3 +31,8 @@ func (c *LRUCache) SetFeed(ctx context.Context, limit, offset int, models []mode
 	key := createPostFeedKey(limit, offset)
 	c.set(key, models)
 }
+
+func (c *LRUCache) WritePost(ctx context.Context, userId, post string) (string, error) {
+	// This is a stub implementation. You can implement caching logic here if needed.
+	return "", nil
+}
