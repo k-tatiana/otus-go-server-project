@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +18,7 @@ import (
 	"otus/go-server-project/internal/handlers/websocket"
 	"otus/go-server-project/internal/middlewares"
 	"otus/go-server-project/internal/service"
+	"otus/go-server-project/internal/transport/rabbitmq"
 	"otus/go-server-project/internal/transport/storage"
 	"otus/go-server-project/internal/transport/storage/cache"
 	"otus/go-server-project/internal/transport/storage/repository"
@@ -139,9 +141,21 @@ func (s *HttpServer) Start() error {
 	a.HandleFunc("/dialog/{user_id}/send", dialogHandler.SendDialog).Methods("POST")
 	a.HandleFunc("/dialog/{user_id}/list", dialogHandler.ListDialog).Methods("GET")
 
-	websocketHandler := websocket.NewWebSocketHandler(authenticator)
+	rmqClient := service.NewRmq(
+		rabbitmq.RabbitMQConfig{
+			Host:              env.RabbitMQ.Host,
+			Port:              env.RabbitMQ.Port,
+			Username:          env.RabbitMQ.User,
+			Password:          env.RabbitMQ.Password,
+			VHost:             env.RabbitMQ.VHost,
+			ConnectionTimeout: 30 * time.Second,
+			Heartbeat:         10 * time.Second,
+		},
+	)
+
+	websocketHandler := websocket.NewWebSocketHandler(authenticator, rmqClient)
 	go websocketHandler.Hub.Run()
-	defaultRouter.HandleFunc("/ws", websocketHandler.HandleWebSocket)
+	defaultRouter.HandleFunc("/post/feed/posted", websocketHandler.HandleWebSocket)
 
 	// middlewares
 	a.Use(middlewares.AuthMiddleware)

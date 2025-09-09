@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/rabbitmq/amqp091-go"
 
 	"otus/go-server-project/internal/models"
 )
@@ -18,12 +19,22 @@ type WSClient struct {
 	UserID     string
 }
 
+type rmq interface {
+	Consume(queue string) (<-chan amqp091.Delivery, error)
+	Publish(exchange, routingKey string, body []byte) error
+}
+
 type Hub struct {
 	Clients    map[*WSClient]bool
 	Register   chan *WSClient
 	Unregister chan *WSClient
 	Broadcast  chan models.WebSocketMessage
-	mu         sync.RWMutex
+
+	PostsQueue string
+
+	RMQ rmq
+
+	mu sync.RWMutex
 }
 
 func (h *Hub) Run() {
@@ -44,20 +55,24 @@ func (h *Hub) Run() {
 			h.mu.Unlock()
 			fmt.Printf("Client %s disconnected", client.ID)
 
-		case message := <-h.Broadcast:
+		case message := <-h.BroadcastMessage(h.PostsQueue):
 			h.mu.RLock()
+
 			bytes, err := json.Marshal(message)
 			if err != nil {
 				fmt.Printf("unable to marshal message %d", message)
 			}
+
 			for client := range h.Clients {
-				if client.Subscribed[*message.AuthorUserID] {
+				if client.Subscribed[message.RoutingKey] {
 					select {
 					case client.Send <- bytes:
 						fmt.Print("sent to client")
+						message.Ack(false)
 					default:
 						close(client.Send)
 						delete(h.Clients, client)
+						message.Nack(false, true)
 					}
 				}
 			}
@@ -66,10 +81,26 @@ func (h *Hub) Run() {
 	}
 }
 
-func (h *Hub) PublishToChannel(channel string, data interface{}) error {
-	message := data.(models.WebSocketMessage)
+func (h *Hub) BroadcastMessage(queue string) <-chan amqp091.Delivery {
+	chanMsg, err := h.RMQ.Consume(queue)
+	if err != nil {
+		fmt.Println(fmt.Errorf("unable to consume message: %v", err))
+	}
 
-	h.Broadcast <- message
+	return chanMsg
+}
+
+func (h *Hub) PublishToChannel(exchange, routingKey string, data models.WebSocketMessage) error {
+	msg, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
+
+	err = h.RMQ.Publish(exchange, routingKey, msg)
+	if err != nil {
+		return fmt.Errorf("failed to publish message: %w", err)
+	}
+
 	return nil
 }
 

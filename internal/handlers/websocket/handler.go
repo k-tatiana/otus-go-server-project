@@ -23,15 +23,18 @@ type authenticator interface {
 type WebSocketHandler struct {
 	Hub           *service.Hub
 	authenticator authenticator
+	RMQ           service.Rmq
 }
 
-func NewWebSocketHandler(auth authenticator) *WebSocketHandler {
+func NewWebSocketHandler(auth authenticator, rmqClient *service.Rmq) *WebSocketHandler {
 	return &WebSocketHandler{
 		Hub: &service.Hub{
 			Clients:    make(map[*service.WSClient]bool),
 			Register:   make(chan *service.WSClient),
 			Unregister: make(chan *service.WSClient),
-			Broadcast:  make(chan models.WebSocketMessage, 100),
+			Broadcast:  make(chan models.WebSocketMessage),
+			RMQ:        rmqClient,
+			PostsQueue: service.DefaultQueueName,
 		},
 		authenticator: auth}
 }
@@ -125,7 +128,8 @@ func (h *WebSocketHandler) handleMessage(client *service.WSClient, message []byt
 	case models.MessageTypePublish:
 		h.handlePublish(client, wsMessage)
 	default:
-		h.sendError(client, "Unknown message type", wsMessage.PostID)
+		wsMessage.Type = models.MessageTypePublish
+		h.handlePublish(client, wsMessage)
 	}
 }
 
@@ -146,7 +150,7 @@ func (h *WebSocketHandler) handleUnsubscribe(client *service.WSClient, msg model
 }
 
 func (h *WebSocketHandler) handlePublish(client *service.WSClient, msg models.WebSocketMessage) {
-	// Здесь может быть логика валидации и обработки публикаций
+	h.Hub.PublishToChannel(service.DefaultExchangeName, *msg.AuthorUserID, msg)
 	h.sendAck(client, "Message processed", msg.PostID)
 }
 
