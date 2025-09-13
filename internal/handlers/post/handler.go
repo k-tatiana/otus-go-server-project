@@ -9,6 +9,7 @@ import (
 
 type PostsService interface {
 	Feed(context.Context, int, int) ([]models.Post, error)
+	WritePost(context.Context, string, string) (string, error)
 }
 
 type authenticator interface {

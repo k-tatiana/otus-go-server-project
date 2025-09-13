@@ -8,6 +8,7 @@ import (
 type DialogRepository interface {
 	SendMessage(context.Context, string, string, string) error
 	ListDialogs(context.Context, string, string) ([]models.Dialog, error)
+	WritePost(context.Context, string, string) (string, error)
 }
 
 type dialogService struct {

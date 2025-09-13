@@ -41,3 +41,21 @@ func (r *Repo) GetFeed(ctx context.Context, limit, offset int) ([]models.Post, e
 func (r *Repo) SetFeed(ctx context.Context, limit, offset int, models []models.Post) {
 	// This method is intentionally left blank as caching logic is handled elsewhere.
 }
+
+func (r *Repo) WritePost(ctx context.Context, userId, post string) (string, error) {
+	conn, err := r.Master.Acquire(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to acquire connection: %w", err)
+	}
+	defer conn.Release()
+	var postId string
+	err = conn.QueryRow(ctx,
+		`INSERT INTO posts (author_user_id, text) VALUES ($1::varchar, $2) RETURNING id`,
+		userId, post,
+	).Scan(&postId)
+	if err != nil {
+		return "", fmt.Errorf("failed to write post: %w", err)
+	}
+
+	return postId, nil
+}

@@ -5,20 +5,23 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 
 	"otus/go-server-project/internal"
 	"otus/go-server-project/internal/handlers/dialog"
 	"otus/go-server-project/internal/handlers/post"
 	"otus/go-server-project/internal/handlers/user"
+	"otus/go-server-project/internal/handlers/websocket"
 	"otus/go-server-project/internal/middlewares"
 	"otus/go-server-project/internal/service"
-	"otus/go-server-project/internal/storage"
-	"otus/go-server-project/internal/storage/cache"
-	"otus/go-server-project/internal/storage/repository"
-
-	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"go.uber.org/zap"
+	"otus/go-server-project/internal/transport/rabbitmq"
+	"otus/go-server-project/internal/transport/storage"
+	"otus/go-server-project/internal/transport/storage/cache"
+	"otus/go-server-project/internal/transport/storage/repository"
 )
 
 const (
@@ -53,7 +56,7 @@ func (s *HttpServer) Start() error {
 
 	ctx := context.Background()
 
-	r := mux.NewRouter()
+	defaultRouter := mux.NewRouter()
 
 	logger := zap.NewNop()
 
@@ -112,6 +115,7 @@ func (s *HttpServer) Start() error {
 	dialogService := service.NewDialogService(repo)
 	dialogHandler := dialog.NewDialogHandler(dialogService, logger, authenticator)
 
+	r := defaultRouter.PathPrefix("/api").Subrouter()
 	a := r.NewRoute().Subrouter() // for requests only for logged-in
 
 	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
@@ -127,7 +131,7 @@ func (s *HttpServer) Start() error {
 	// r.HandleFunc("/friend/delete/{user_id}", friend.DeleteFriend).Methods("PUT")
 
 	// // Post
-	// r.HandleFunc("/post/create", post.CreatePost).Methods("POST")
+	a.HandleFunc("/post/create", postsHandler.CreatePost).Methods("POST")
 	// r.HandleFunc("/post/update", post.UpdatePost).Methods("PUT")
 	// r.HandleFunc("/post/delete/{id}", post.DeletePost).Methods("PUT")
 	// r.HandleFunc("/post/get/{id}", post.GetPost).Methods("GET")
@@ -137,13 +141,29 @@ func (s *HttpServer) Start() error {
 	a.HandleFunc("/dialog/{user_id}/send", dialogHandler.SendDialog).Methods("POST")
 	a.HandleFunc("/dialog/{user_id}/list", dialogHandler.ListDialog).Methods("GET")
 
+	rmqClient := service.NewRmq(
+		rabbitmq.RabbitMQConfig{
+			Host:              env.RabbitMQ.Host,
+			Port:              env.RabbitMQ.Port,
+			Username:          env.RabbitMQ.User,
+			Password:          env.RabbitMQ.Password,
+			VHost:             env.RabbitMQ.VHost,
+			ConnectionTimeout: 30 * time.Second,
+			Heartbeat:         10 * time.Second,
+		},
+	)
+
+	websocketHandler := websocket.NewWebSocketHandler(authenticator, rmqClient)
+	go websocketHandler.Hub.Run()
+	defaultRouter.HandleFunc("/post/feed/posted", websocketHandler.HandleWebSocket)
+
 	// middlewares
 	a.Use(middlewares.AuthMiddleware)
 	r.Use(middlewares.Logger)
 	r.Use(middlewares.Responses)
 	r.Use(middlewares.RequestIDMiddleware)
 
-	s.srv.Handler = r
+	s.srv.Handler = defaultRouter
 
 	return s.srv.ListenAndServe()
 }
