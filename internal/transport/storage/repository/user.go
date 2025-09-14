@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v5"
 
@@ -16,17 +15,17 @@ import (
 )
 
 // Login checks user credentials and returns a token if valid.
-func (r *Repo) Login(ctx context.Context, login, passwordHash string) (string, error) {
+func (r *Repo) Login(ctx context.Context, login, passwordHash string) error {
 	// acquire a connection from the master pool
 	conn, err := r.Master.Acquire(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to acquire connection: %w", err)
+		return fmt.Errorf("failed to acquire connection: %w", err)
 	}
 	defer conn.Release()
 	// Start a transaction to ensure atomicity
 	tx, err := conn.Begin(ctx)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer func() {
 		if p := recover(); p != nil {
@@ -37,25 +36,21 @@ func (r *Repo) Login(ctx context.Context, login, passwordHash string) (string, e
 		}
 	}()
 
-	token, err := r.loginWithReturnToken(ctx, tx, login, passwordHash)
-	if err != nil {
-		return "", err
+	if err := r.loginUser(ctx, tx, login, passwordHash); err != nil {
+		return err
 	}
 
-	err = r.saveToken(ctx, tx, token)
+	err = r.saveToken(ctx, tx, login)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return token, nil
+	return nil
 }
 
 // loginWithReturnToken checks the credentials and returns the token if valid.
-func (r *Repo) loginWithReturnToken(ctx context.Context, tx pgx.Tx, login, passwordHash string) (string, error) {
-	var (
-		token    string
-		pwd_hash string
-	)
+func (r *Repo) loginUser(ctx context.Context, tx pgx.Tx, login, passwordHash string) error {
+	var pwd_hash string
 	err := tx.QueryRow(
 		ctx,
 		"SELECT password_hash FROM users WHERE token=$1",
@@ -63,24 +58,23 @@ func (r *Repo) loginWithReturnToken(ctx context.Context, tx pgx.Tx, login, passw
 	).Scan(&pwd_hash)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return "", models.ErrNoSuchUser
+			return models.ErrNoSuchUser
 		}
-		return "", err
+		return err
 	}
 	if pwd_hash != passwordHash {
-		return "", models.ErrInvalidCredentials
+		return models.ErrInvalidCredentials
 	}
-	token = uuid.New().String() // Generate a new token
 
-	return token, nil
+	return nil
 }
 
 // saveToken saves the token for the user (dummy implementation).
-func (r *Repo) saveToken(ctx context.Context, tx pgx.Tx, token string) error {
+func (r *Repo) saveToken(ctx context.Context, tx pgx.Tx, login string) error {
 	_, err := tx.Exec(
 		ctx,
 		"INSERT INTO sessions (token, expiration_time) VALUES ($1, $2)",
-		token, time.Now().Add(24*time.Hour), // Example expiration time
+		login, time.Now().Add(24*time.Hour), // Example expiration time
 	)
 	return err
 }
@@ -145,27 +139,27 @@ func (r *Repo) Get(ctx context.Context, id string) (models.UserDTO, error) {
 	return u, nil
 }
 
-func (r *Repo) ValidateToken(ctx context.Context, token string) error {
+func (r *Repo) ValidateToken(ctx context.Context, token string) (string, error) {
 	idx := rand.Intn(len(r.Replicas))
 	conn, err := r.Replicas[idx].Acquire(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to acquire connection: %w", err)
+		return "", fmt.Errorf("failed to acquire connection: %w", err)
 	}
 	defer conn.Release()
 	// Check if the token exists and is valid
-	var count int
+	var userID string
 	err = conn.QueryRow(
 		ctx,
-		"SELECT COUNT(*) FROM sessions WHERE token=$1 AND expiration_time > NOW()",
+		"SELECT token FROM sessions WHERE token=$1 AND expiration_time > NOW() LIMIT 1",
 		token,
-	).Scan(&count)
+	).Scan(&userID)
 	if err != nil {
-		return fmt.Errorf("failed to validate token: %w", err)
+		return "", fmt.Errorf("no valid sessions for user: %w", err)
 	}
-	if count == 0 {
-		return models.ErrUnauthorized
+	if userID == "" {
+		return "", models.ErrUnauthorized
 	}
-	return nil
+	return userID, nil
 }
 
 func (r *Repo) SearchUser(ctx context.Context, name, surname string) ([]models.UserDTO, error) {

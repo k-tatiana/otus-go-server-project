@@ -11,7 +11,7 @@ import (
 var ErrInvalidCredentials = errors.New("invalid credentials")
 
 type UserRepository interface {
-	Login(context.Context, string, string) (string, error)
+	Login(context.Context, string, string) error
 	Get(context.Context, string) (models.UserDTO, error)
 	SearchUser(context.Context, string, string) ([]models.UserDTO, error)
 	RegisterUser(context.Context, models.UserDTO) (string, error)
@@ -35,19 +35,19 @@ func NewUserService(r UserRepository, h PasswordHasher) *userService {
 
 // Login authenticates a user with the given username and password.
 // It returns a token if the credentials are valid, or an error if they are not.
-func (s *userService) Login(ctx context.Context, login, password string) (string, error) {
+func (s *userService) Login(ctx context.Context, login, password string) error {
 	fmt.Printf("Login attempt with username: %s\n", login)
 	if login == "" || password == "" {
-		return "", ErrInvalidCredentials
+		return ErrInvalidCredentials
 	}
 	pwd_hash := s.hasher.Hash(password)
 
-	token, err := s.repo.Login(ctx, login, pwd_hash)
+	err := s.repo.Login(ctx, login, pwd_hash)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return token, nil
+	return nil
 }
 
 func (s *userService) RegisterUser(ctx context.Context, u models.User) (string, error) {
