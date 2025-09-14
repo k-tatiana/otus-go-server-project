@@ -8,7 +8,7 @@ import (
 )
 
 type UserService interface {
-	Login(context.Context, string, string) (string, error)
+	Login(context.Context, string, string) error
 	RegisterUser(context.Context, models.User) (string, error)
 	Get(context.Context, string) (models.User, error)
 	SearchUser(context.Context, string, string) ([]models.User, error)

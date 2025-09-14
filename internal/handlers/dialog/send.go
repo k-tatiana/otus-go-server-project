@@ -18,8 +18,8 @@ var req struct {
 
 func (h *DialogHandler) SendDialog(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	currentUser := r.Header.Get("X-Authenticated-User")
-	err := h.authenticator.Auth(ctx, currentUser)
+	authUserToken := r.Header.Get("X-Authenticated-User")
+	err := h.authenticator.Auth(ctx, authUserToken)
 	if err != nil && errors.Is(err, models.ErrUnauthorized) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -43,7 +43,7 @@ func (h *DialogHandler) SendDialog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.logger.Info("Message: %s\n", zap.String("message", message))
-	err = h.service.Send(ctx, currentUser, userID, message)
+	err = h.service.Send(ctx, authUserToken, userID, message)
 	if err != nil {
 		h.logger.Error("Error sending message: %v\n", zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

@@ -19,7 +19,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.service.Login(ctx, l.Login, l.Password)
+	err = h.service.Login(ctx, l.Login, l.Password)
 	if errors.Is(err, models.ErrNoSuchUser) {
 		http.Error(w, "No such user", http.StatusNotFound)
 		w.WriteHeader(http.StatusNotFound)
@@ -35,7 +35,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authenticator := service.Authenticator{}
-	authToken := authenticator.GenerateToken(token)
+	authToken := authenticator.GenerateBearerToken(l.Login)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"token":"` + authToken + `"}`))

@@ -10,7 +10,7 @@ import (
 )
 
 type Repo interface {
-	ValidateToken(ctx context.Context, token string) error
+	ValidateToken(ctx context.Context, token string) (string, error)
 }
 
 type Authenticator struct {
@@ -22,7 +22,7 @@ func NewAuthenticator(repo Repo) *Authenticator {
 }
 
 // GenerateBearerToken creates a random 32-byte bearer token.
-func (a *Authenticator) GenerateToken(token string) string {
+func (a *Authenticator) GenerateBearerToken(token string) string {
 	validTo := time.Now().Add(24 * time.Hour) // Token valid for 24 hours
 
 	validToString := validTo.Format(time.RFC3339)
@@ -31,7 +31,7 @@ func (a *Authenticator) GenerateToken(token string) string {
 	return base64.StdEncoding.EncodeToString(b)
 }
 
-func (a *Authenticator) ValidateToken(token string) (string, error) {
+func (a *Authenticator) ValidateBearerToken(token string) (string, error) {
 	// Here you would typically check the token against a database or cache.
 	// For simplicity, let's assume the token is valid if it starts with "Bearer ".
 	if len(token) < 7 || token[:7] != "Bearer " {
@@ -65,9 +65,13 @@ func (a *Authenticator) Auth(ctx context.Context, token string) error {
 		return errors.New("token is empty")
 	}
 
-	err := a.repo.ValidateToken(ctx, token)
+	userID, err := a.repo.ValidateToken(ctx, token)
 	if err != nil {
 		return err
+	}
+
+	if userID != token {
+		return errors.New("invalid token")
 	}
 
 	return nil
