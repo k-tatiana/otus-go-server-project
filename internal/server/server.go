@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
-	"otus/go-server-project/internal"
+	"otus/go-server-project/internal/config"
 	"otus/go-server-project/internal/handlers/dialog"
 	"otus/go-server-project/internal/handlers/post"
 	"otus/go-server-project/internal/handlers/user"
@@ -49,7 +49,7 @@ func (s *HttpServer) Start() error {
 	// 	log.Fatalf("Error loading .env file: %v", err)
 	// }
 
-	env, err := internal.EnvParse()
+	env, err := config.EnvParse()
 	if err != nil {
 		log.Fatalf("Could not parse environment variables: %v", err)
 	}
@@ -112,7 +112,14 @@ func (s *HttpServer) Start() error {
 	postsService := service.NewPostsService(strg)
 	postsHandler := post.NewPostsHandler(postsService, logger, authenticator)
 
-	dialogService := service.NewDialogService(repo)
+	var dialogService *service.DialogService
+	if env.Tarantool.Enabled {
+		tarantoolService := service.NewTarantoolService(ctx, env.Tarantool, repo)
+		dialogService = service.NewDialogService(tarantoolService)
+	} else {
+		dialogService = service.NewDialogService(repo)
+	}
+
 	dialogHandler := dialog.NewDialogHandler(dialogService, logger, authenticator)
 
 	r := defaultRouter.PathPrefix("/api").Subrouter()

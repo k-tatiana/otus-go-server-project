@@ -2,13 +2,15 @@ package dialog
 
 import (
 	"context"
-	"otus/go-server-project/internal/models"
+	"time"
 
 	"go.uber.org/zap"
+
+	"otus/go-server-project/internal/models"
 )
 
 type DialogService interface {
-	Send(context.Context, string, string, string) error
+	Send(context.Context, string, string, string, *time.Time) error
 	List(context.Context, string, string) ([]models.Dialog, error)
 }
 

@@ -15,6 +15,10 @@ services:
       #   condition: service_healthy
       db-migrate:
         condition: service_completed_successfully
+      tarantool:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     env_file:
       - .env
     networks:
@@ -111,6 +115,21 @@ services:
     networks:
       - pgnet
 
+  tarantool:
+    image: "tarantool/tarantool:3.5.0"
+    container_name: tarantool
+    ports:
+      - "3301:3301"
+      - "8081:8081"
+    environment:
+      TZ: UTC
+    volumes:
+      - "$PWD/volumes/tarantool/:/var/lib/tarantool"
+      - "$PWD/tarantool:/opt/tarantool"
+    command: ["tarantool", "/opt/tarantool/init.lua"]
+    networks:
+      - pgnet
+      
 networks:
   pgnet:
     driver: bridge

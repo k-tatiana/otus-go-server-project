@@ -1,4 +1,4 @@
-package internal
+package config
 
 import "github.com/kelseyhightower/envconfig"
 
@@ -19,6 +19,14 @@ type RabbitMQConfig struct {
 	VHost    string `envconfig:"VHOST" default:"/"`
 }
 
+type Tarantool struct {
+	Host     string `envconfig:"HOST" default:"localhost"`
+	Port     string `envconfig:"PORT" default:"3301"`
+	User     string `envconfig:"USER" default:"guest"`
+	Password string `envconfig:"PASSWORD" default:""`
+	Enabled  bool   `envconfig:"ENABLED" default:"false"`
+}
+
 type DB struct {
 	UseReplicas bool `envconfig:"USE_REPLICAS" default:"false"`
 }
@@ -31,6 +39,7 @@ type Config struct {
 	Secret     string         `envconfig:"SECRET"`
 	Cache      Cache          `envconfig:"CACHE"`
 	RabbitMQ   RabbitMQConfig `envconfig:"RABBITMQ"`
+	Tarantool  Tarantool      `envconfig:"TARANTOOL"`
 }
 
 type Cache struct {

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"otus/go-server-project/internal/models"
-
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
+
+	"otus/go-server-project/internal/models"
 )
 
 var req struct {
@@ -43,7 +43,7 @@ func (h *DialogHandler) SendDialog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.logger.Info("Message: %s\n", zap.String("message", message))
-	err = h.service.Send(ctx, authUserToken, userID, message)
+	err = h.service.Send(ctx, authUserToken, userID, message, nil)
 	if err != nil {
 		h.logger.Error("Error sending message: %v\n", zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
