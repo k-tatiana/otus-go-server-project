@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE sessions (
-    token VARCHAR NOT NULL PRIMARY KEY,
+    token VARCHAR NOT NULL,
     expiration_time TIMESTAMP WITHOUT TIME ZONE
 );
 -- +goose StatementEnd
