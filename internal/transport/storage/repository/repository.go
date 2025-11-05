@@ -36,10 +36,10 @@ func Config(url string) *pgxpool.Config {
 
 type Repo struct {
 	Master   *pgxpool.Pool
-	Replicas []*pgxpool.Pool
+	Replicas *pgxpool.Pool
 }
 
-func NewRepo(ctx context.Context, masterConfig *pgxpool.Config, slavesConfig []*pgxpool.Config, useReplicas bool) (*Repo, error) {
+func NewRepo(ctx context.Context, masterConfig *pgxpool.Config, slavesConfig *pgxpool.Config, useReplicas bool) (*Repo, error) {
 	masterPool, err := pgxpool.NewWithConfig(ctx, masterConfig)
 	if err != nil {
 		return nil, err
@@ -48,27 +48,23 @@ func NewRepo(ctx context.Context, masterConfig *pgxpool.Config, slavesConfig []*
 		return nil, fmt.Errorf("failed to connect to master database: %w", err)
 	}
 
-	var replicaPools []*pgxpool.Pool
+	var replicaPool *pgxpool.Pool
 	if useReplicas {
-		for _, rCfg := range slavesConfig {
-			p, err := pgxpool.NewWithConfig(ctx, rCfg)
-			if err != nil {
-				log.Printf("failed to connect to replica: %v", err)
-				continue
-			}
-			if err := p.Ping(ctx); err != nil {
-				log.Printf("failed to ping replica: %v", err)
-				continue
-			}
-			log.Printf("Connected to replica: %s", rCfg.ConnConfig.Host)
-			replicaPools = append(replicaPools, p)
+		p, err := pgxpool.NewWithConfig(ctx, slavesConfig)
+		if err != nil {
+			log.Fatalf("failed to connect to replica: %v", err)
 		}
+		if err := p.Ping(ctx); err != nil {
+			log.Fatalf("failed to ping replica: %v", err)
+		}
+		replicaPool = p
+		log.Printf("Connected to replica: %s", slavesConfig.ConnConfig.Host)
 	} else {
-		replicaPools = []*pgxpool.Pool{masterPool}
+		replicaPool = masterPool
 	}
 
 	return &Repo{
 		Master:   masterPool,
-		Replicas: replicaPools,
+		Replicas: replicaPool,
 	}, nil
 }

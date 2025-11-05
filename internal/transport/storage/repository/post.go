@@ -3,14 +3,12 @@ package repository
 import (
 	"context"
 	"fmt"
-	"math/rand"
 
 	"otus/go-server-project/internal/models"
 )
 
 func (r *Repo) GetFeed(ctx context.Context, limit, offset int) ([]models.Post, error) {
-	idx := rand.Intn(len(r.Replicas))
-	conn, err := r.Replicas[idx].Acquire(ctx)
+	conn, err := r.Replicas.Acquire(ctx) // balancing through haproxy
 	if err != nil {
 		return []models.Post{}, fmt.Errorf("failed to acquire connection: %w", err)
 	}

@@ -32,7 +32,7 @@ func (r *Repo) SendMessage(ctx context.Context, fromUserID, toUserID, message st
 
 func (r *Repo) ListDialogs(ctx context.Context, user1 string, user2 string) ([]models.Dialog, error) {
 	dialogs := []models.Dialog{}
-	conn, err := r.Master.Acquire(context.Background())
+	conn, err := r.Replicas.Acquire(context.Background()) // balancing through haproxy
 	if err != nil {
 		return nil, fmt.Errorf("failed to acquire connection: %w", err)
 	}
@@ -65,7 +65,7 @@ func (r *Repo) ListDialogs(ctx context.Context, user1 string, user2 string) ([]m
 
 func (r *Repo) ListFullDialogs(ctx context.Context) ([]models.DialogDTO, error) {
 	dialogs := []models.DialogDTO{}
-	conn, err := r.Master.Acquire(context.Background())
+	conn, err := r.Replicas.Acquire(context.Background()) // balancing through haproxy
 	if err != nil {
 		return nil, fmt.Errorf("failed to acquire connection: %w", err)
 	}
