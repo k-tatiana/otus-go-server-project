@@ -40,6 +40,9 @@ type Config struct {
 	Cache      Cache          `envconfig:"CACHE"`
 	RabbitMQ   RabbitMQConfig `envconfig:"RABBITMQ"`
 	Tarantool  Tarantool      `envconfig:"TARANTOOL"`
+	DialogAPI  struct {
+		Address string `envconfig:"ADDRESS" default:"http://localhost:8082"`
+	} `envconfig:"DIALOG_API"`
 }
 
 type Cache struct {

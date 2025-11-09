@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
+	netHttp "net/http"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -13,11 +13,13 @@ import (
 
 	"otus/go-server-project/internal/config"
 	"otus/go-server-project/internal/handlers/dialog"
+	dialogv2 "otus/go-server-project/internal/handlers/dialogV2"
 	"otus/go-server-project/internal/handlers/post"
 	"otus/go-server-project/internal/handlers/user"
 	"otus/go-server-project/internal/handlers/websocket"
 	"otus/go-server-project/internal/middlewares"
 	"otus/go-server-project/internal/service"
+	"otus/go-server-project/internal/transport/http"
 	"otus/go-server-project/internal/transport/rabbitmq"
 	"otus/go-server-project/internal/transport/storage"
 	"otus/go-server-project/internal/transport/storage/cache"
@@ -30,12 +32,12 @@ const (
 )
 
 type HttpServer struct {
-	srv *http.Server
+	srv *netHttp.Server
 }
 
 func NewServer(addr string) *HttpServer {
 	return &HttpServer{
-		srv: &http.Server{
+		srv: &netHttp.Server{
 			Addr: addr,
 		},
 	}
@@ -122,10 +124,14 @@ func (s *HttpServer) Start() error {
 
 	dialogHandler := dialog.NewDialogHandler(dialogService, logger, authenticator)
 
+	dialogClient := http.NewDialogClient(env.DialogAPI.Address)
+	dialogAPIHandler := dialogv2.NewDialogAPIHandler(dialogClient, logger, authenticator)
+
 	r := defaultRouter.PathPrefix("/api").Subrouter()
 	a := r.NewRoute().Subrouter() // for requests only for logged-in
+	aV2 := a.PathPrefix("/v2").Subrouter()
 
-	r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+	r.PathPrefix("/debug/pprof/").Handler(netHttp.DefaultServeMux)
 
 	// User
 	r.HandleFunc("/login", userHandler.Login).Methods("POST")
@@ -147,6 +153,10 @@ func (s *HttpServer) Start() error {
 	// // Dialog
 	a.HandleFunc("/dialog/{user_id}/send", dialogHandler.SendDialog).Methods("POST")
 	a.HandleFunc("/dialog/{user_id}/list", dialogHandler.ListDialog).Methods("GET")
+
+	// Dialogs API
+	aV2.HandleFunc("/dialog/{user_id}/send", dialogAPIHandler.SendDialog).Methods("POST")
+	aV2.HandleFunc("/dialog/{user_id}/list", dialogAPIHandler.ListDialog).Methods("GET")
 
 	rmqClient := service.NewRmq(
 		rabbitmq.RabbitMQConfig{
