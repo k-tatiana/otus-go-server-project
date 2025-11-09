@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -116,9 +115,7 @@ func (r *Repo) RegisterUser(ctx context.Context, u models.UserDTO) (string, erro
 }
 
 func (r *Repo) Get(ctx context.Context, id string) (models.UserDTO, error) {
-	// acquire a connection from random one of the replicas
-	idx := rand.Intn(len(r.Replicas))
-	conn, err := r.Replicas[idx].Acquire(ctx)
+	conn, err := r.Replicas.Acquire(ctx) // balancing through haproxy
 	if err != nil {
 		return models.UserDTO{}, fmt.Errorf("failed to acquire connection: %w", err)
 	}
@@ -140,8 +137,7 @@ func (r *Repo) Get(ctx context.Context, id string) (models.UserDTO, error) {
 }
 
 func (r *Repo) ValidateToken(ctx context.Context, token string) (string, error) {
-	idx := rand.Intn(len(r.Replicas))
-	conn, err := r.Replicas[idx].Acquire(ctx)
+	conn, err := r.Replicas.Acquire(ctx) // balancing through haproxy
 	if err != nil {
 		return "", fmt.Errorf("failed to acquire connection: %w", err)
 	}
@@ -165,8 +161,7 @@ func (r *Repo) ValidateToken(ctx context.Context, token string) (string, error) 
 func (r *Repo) SearchUser(ctx context.Context, name, surname string) ([]models.UserDTO, error) {
 	users := make([]models.UserDTO, 0)
 
-	idx := rand.Intn(len(r.Replicas))
-	conn, err := r.Replicas[idx].Acquire(ctx)
+	conn, err := r.Replicas.Acquire(ctx) // balancing through haproxy
 	if err != nil {
 		return users, fmt.Errorf("failed to acquire connection: %w", err)
 	}

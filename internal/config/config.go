@@ -12,11 +12,12 @@ type DBConfig struct {
 }
 
 type RabbitMQConfig struct {
-	Host     string `envconfig:"HOST" default:"localhost"`
-	Port     int    `envconfig:"PORT" default:"5672"`
-	User     string `envconfig:"USER" default:"guest"`
-	Password string `envconfig:"PASSWORD" default:"guest"`
-	VHost    string `envconfig:"VHOST" default:"/"`
+	EnableWebSocket bool   `envconfig:"ENABLE_WEBSOCKET" default:"true"`
+	Host            string `envconfig:"HOST" default:"localhost"`
+	Port            int    `envconfig:"PORT" default:"5672"`
+	User            string `envconfig:"USER" default:"guest"`
+	Password        string `envconfig:"PASSWORD" default:"guest"`
+	VHost           string `envconfig:"VHOST" default:"/"`
 }
 
 type Tarantool struct {
@@ -34,8 +35,7 @@ type DB struct {
 type Config struct {
 	DB         DB             `envconfig:"DB"`
 	DBMaster   DBConfig       `envconfig:"DB_MASTER"`
-	DBReplica1 DBConfig       `envconfig:"DB_REPLICA1"`
-	DBReplica2 DBConfig       `envconfig:"DB_REPLICA2"`
+	DBReplicas DBConfig       `envconfig:"DB_REPLICAS"`
 	Secret     string         `envconfig:"SECRET"`
 	Cache      Cache          `envconfig:"CACHE"`
 	RabbitMQ   RabbitMQConfig `envconfig:"RABBITMQ"`

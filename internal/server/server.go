@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
 	"otus/go-server-project/internal/config"
@@ -71,32 +70,18 @@ func (s *HttpServer) Start() error {
 			env.DBMaster.Port,
 			env.DBMaster.Database,
 		))
-	slaveDbCfgs := []*pgxpool.Config{
-		repository.Config(
-			fmt.Sprintf(
-				"postgres://%s:%s@%s:%d/%s",
-				env.DBReplica1.User,
-				env.DBReplica1.Password,
-				env.DBReplica1.Host,
-				env.DBReplica1.Port,
-				env.DBReplica1.Database,
-			)),
-		repository.Config(
-			fmt.Sprintf(
-				"postgres://%s:%s@%s:%d/%s",
-				env.DBReplica2.User,
-				env.DBReplica2.Password,
-				env.DBReplica2.Host,
-				env.DBReplica2.Port,
-				env.DBReplica2.Database,
-			)),
-	}
 
-	if err != nil {
-		log.Fatalf("Could not connect to database: %v", err)
-	}
+	slaveDbCfg := repository.Config(
+		fmt.Sprintf(
+			"postgres://%s:%s@%s:%d/%s",
+			env.DBReplicas.User,
+			env.DBReplicas.Password,
+			env.DBReplicas.Host,
+			env.DBReplicas.Port,
+			env.DBReplicas.Database,
+		))
 
-	repo, err := repository.NewRepo(ctx, masterDbCfg, slaveDbCfgs, env.DB.UseReplicas)
+	repo, err := repository.NewRepo(ctx, masterDbCfg, slaveDbCfg, env.DB.UseReplicas)
 	if err != nil {
 		log.Fatalf("Could not create repository: %v", err)
 	}
@@ -158,21 +143,23 @@ func (s *HttpServer) Start() error {
 	aV2.HandleFunc("/dialog/{user_id}/send", dialogAPIHandler.SendDialog).Methods("POST")
 	aV2.HandleFunc("/dialog/{user_id}/list", dialogAPIHandler.ListDialog).Methods("GET")
 
-	rmqClient := service.NewRmq(
-		rabbitmq.RabbitMQConfig{
-			Host:              env.RabbitMQ.Host,
-			Port:              env.RabbitMQ.Port,
-			Username:          env.RabbitMQ.User,
-			Password:          env.RabbitMQ.Password,
-			VHost:             env.RabbitMQ.VHost,
-			ConnectionTimeout: 30 * time.Second,
-			Heartbeat:         10 * time.Second,
-		},
-	)
+	if env.RabbitMQ.EnableWebSocket {
+		rmqClient := service.NewRmq(
+			rabbitmq.RabbitMQConfig{
+				Host:              env.RabbitMQ.Host,
+				Port:              env.RabbitMQ.Port,
+				Username:          env.RabbitMQ.User,
+				Password:          env.RabbitMQ.Password,
+				VHost:             env.RabbitMQ.VHost,
+				ConnectionTimeout: 30 * time.Second,
+				Heartbeat:         10 * time.Second,
+			},
+		)
 
-	websocketHandler := websocket.NewWebSocketHandler(authenticator, rmqClient)
-	go websocketHandler.Hub.Run()
-	defaultRouter.HandleFunc("/post/feed/posted", websocketHandler.HandleWebSocket)
+		websocketHandler := websocket.NewWebSocketHandler(authenticator, rmqClient)
+		go websocketHandler.Hub.Run()
+		defaultRouter.HandleFunc("/post/feed/posted", websocketHandler.HandleWebSocket)
+	}
 
 	// middlewares
 	a.Use(middlewares.AuthMiddleware)
