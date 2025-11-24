@@ -15,7 +15,7 @@ services:
       #   condition: service_healthy
       db-migrate:
         condition: service_completed_successfully
-      tarantool:
+      server_tarantool:
         condition: service_started
       rabbitmq:
         condition: service_started
@@ -115,12 +115,12 @@ services:
     networks:
       - pgnet
 
-  tarantool:
+  server_tarantool:
     image: "tarantool/tarantool:3.5.0"
-    container_name: tarantool
+    container_name: server_tarantool
     ports:
-      - "3301:3301"
-      - "8081:8081"
+      - "13301:3301"
+      - "18081:8081"
     environment:
       TZ: UTC
     volumes:
