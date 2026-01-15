@@ -133,7 +133,7 @@ services:
 networks:
   pgnet:
     driver: bridge
-    ipam:
-          driver: default
-          config:
-            - subnet: "172.19.0.0/16"
+    # ipam:
+    #       driver: default
+    #       config:
+    #         - subnet: "172.19.0.0/16"

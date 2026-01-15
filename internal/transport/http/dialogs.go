@@ -90,6 +90,12 @@ func (dc *DialogClient) List(ctx context.Context, firstUserID, secondUserID stri
 	if err := json.NewDecoder(resp.Body).Decode(&dialogs); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %v", err)
 	}
+
+	for i := range dialogs {
+		dialogs[i].From = firstUserID
+		dialogs[i].To = secondUserID
+	}
+
 	return dialogs, nil
 }
 

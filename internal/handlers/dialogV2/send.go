@@ -59,7 +59,8 @@ func (h *DialogAPIHandler) SendDialog(w http.ResponseWriter, r *http.Request) {
 			h.logger.Error("Error deleting dialog after failed counter increment: %v\n", zap.Error(err))
 		}
 
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		w.Write([]byte("Error incrementing counter"))
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
