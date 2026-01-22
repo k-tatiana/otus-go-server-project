@@ -3,7 +3,6 @@ package dialogv2
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -43,13 +42,28 @@ func (h *DialogAPIHandler) SendDialog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.logger.Info("Message: %s\n", zap.String("message", message))
-	err = h.service.Send(ctx, authUserToken, userID, message, nil)
+
+	dialogID, err := h.service.Send(ctx, authUserToken, userID, message, nil)
 	if err != nil {
 		h.logger.Error("Error sending message: %v\n", zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprintf(w, "Message sent to user %s\n", userID)
 
+	err = h.counter.Increment(ctx, authUserToken, userID)
+	if err != nil {
+		h.logger.Error("Error incrementing counter: %v\n", zap.Error(err))
+
+		// SAGA pattern: откатываем отправку сообщения
+		if err = h.service.Delete(ctx, dialogID); err != nil {
+			h.logger.Error("Error deleting dialog after failed counter increment: %v\n", zap.Error(err))
+		}
+
+		w.Write([]byte("Error incrementing counter"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte("Message sent"))
 	w.WriteHeader(http.StatusOK)
 }

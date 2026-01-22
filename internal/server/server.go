@@ -28,7 +28,6 @@ import (
 
 const (
 	cacheCapacity = 10000
-	useCache      = false
 )
 
 type HttpServer struct {
@@ -60,7 +59,7 @@ func (s *HttpServer) Start() error {
 
 	defaultRouter := mux.NewRouter()
 
-	logger := zap.NewNop()
+	logger, _ := zap.NewProduction()
 
 	masterDbCfg := repository.Config(
 		fmt.Sprintf(
@@ -125,7 +124,8 @@ func (s *HttpServer) Start() error {
 	dialogHandler := dialog.NewDialogHandler(dialogService, logger, authenticator)
 
 	dialogClient := http.NewDialogClient(env.DialogAPI.Address)
-	dialogAPIHandler := dialogv2.NewDialogAPIHandler(dialogClient, logger, authenticator)
+	counterClient := http.NewCounterClient(env.CounterAPI.Address)
+	dialogAPIHandler := dialogv2.NewDialogAPIHandler(dialogClient, logger, authenticator, counterClient)
 
 	r := defaultRouter.PathPrefix("/api").Subrouter()
 	a := r.NewRoute().Subrouter() // for requests only for logged-in
@@ -157,6 +157,7 @@ func (s *HttpServer) Start() error {
 	// Dialogs API
 	aV2.HandleFunc("/dialog/{user_id}/send", dialogAPIHandler.SendDialog).Methods("POST")
 	aV2.HandleFunc("/dialog/{user_id}/list", dialogAPIHandler.ListDialog).Methods("GET")
+	aV2.HandleFunc("/dialog/{user_id}/count", dialogAPIHandler.GetDialogCount).Methods("GET")
 
 	rmqClient := service.NewRmq(
 		rabbitmq.RabbitMQConfig{
@@ -176,6 +177,7 @@ func (s *HttpServer) Start() error {
 
 	// middlewares
 	a.Use(middlewares.AuthMiddleware)
+	aV2.Use(middlewares.AuthMiddleware)
 	r.Use(middlewares.Logger)
 	r.Use(middlewares.Responses)
 	r.Use(middlewares.RequestIDMiddleware)

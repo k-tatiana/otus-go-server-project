@@ -43,6 +43,9 @@ type Config struct {
 	DialogAPI  struct {
 		Address string `envconfig:"ADDRESS" default:"http://localhost:8082"`
 	} `envconfig:"DIALOG_API"`
+	CounterAPI struct {
+		Address string `envconfig:"ADDRESS" default:"http://localhost:8088"`
+	} `envconfig:"COUNTER_API"`
 }
 
 type Cache struct {
